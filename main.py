@@ -1,5 +1,6 @@
 import numpy as np
 import cv2
+from math import atan2,sin,cos
 
 def drawBoard():
     board = cv2.aruco.CharucoBoard_create(5, 7, 1, 0.75, cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50))
@@ -17,7 +18,10 @@ def main():
     offset_transform = None
     smooth_px = 0
     smooth_py = 0
-    cap = cv2.VideoCapture(4)
+    offset_x = 0
+    offset_y = 0
+    angle = 0
+    cap = cv2.VideoCapture(1)
     dictionary = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
     board = cv2.aruco.CharucoBoard_create(5, 7, 1, 0.75, dictionary)
         
@@ -43,13 +47,17 @@ def main():
                 if offset_transform is not None:
                     position = np.squeeze(offset_transform.dot(np.vstack((tvec.reshape((3,1)),1))))
                     print(position)
-                    p_x = position[0]
-                    p_y = position[1]
-                    smooth_px = smooth_px*0.9 + p_x*0.1
-                    smooth_py = smooth_py*0.9 + p_y*0.1
-                    cv2.putText(frame,"{:.4f}".format(smooth_px),(0, 40),cv2.FONT_HERSHEY_SIMPLEX,2,(255,255,255),4)
-                    cv2.putText(frame,"{:.4f}".format(smooth_py),(0, 80),cv2.FONT_HERSHEY_SIMPLEX,2,(255,255,255),4)
-                    cv2.putText(frame,"{:.4f}".format(position[2]),(0,120),cv2.FONT_HERSHEY_SIMPLEX,2,(255,255,255),4)
+                    p_x = cos(angle)*position[0] + sin(angle)*position[1]
+                    p_y = -sin(angle)*position[0] + cos(angle)*position[1]
+                    
+                    p_x += offset_x
+                    p_y += offset_y
+                    
+                    smooth_px = smooth_px*0.95 + p_x*0.05
+                    smooth_py = smooth_py*0.95 + p_y*0.05
+                    cv2.putText(frame,"{:+.4f}".format(smooth_px),(0, 40),cv2.FONT_HERSHEY_SIMPLEX,2,(255,255,255),4)
+                    cv2.putText(frame,"{:+.4f}".format(smooth_py),(0, 80),cv2.FONT_HERSHEY_SIMPLEX,2,(255,255,255),4)
+                    cv2.putText(frame,"{:+.4f}".format(position[2]),(0,120),cv2.FONT_HERSHEY_SIMPLEX,2,(255,255,255),4)
                 
         
         cv2.imshow("Frame",frame)
@@ -65,6 +73,17 @@ def main():
             offset_transform[0:3,0:3] = rod
             offset_transform = np.linalg.inv(offset_transform)
             print(offset_transform)
+        elif k == ord('a'):
+            angle = -atan2(position[0],position[1])
+            print("ANGLE:",angle)
+        elif k == ord('x'):
+            offset_x = -smooth_px
+        elif k == ord('y'):
+            offset_y = -smooth_py
+        elif k == ord('c'):
+            offset_x = offset_x - smooth_px / 2
+        elif k == ord('u'):
+            offset_y = offset_y - smooth_py / 2
         elif k == -1:
             pass
         else:
